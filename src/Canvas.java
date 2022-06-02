@@ -1,23 +1,31 @@
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Polygon;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
+import java.awt.image.ImageObserver;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.swing.JPanel;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 
 public class Canvas extends JPanel {
 
     ArrayList<Vehicle> 			allVehicles;
     double pix;
-
+    ImageIcon imgIcon = null;
     Canvas(ArrayList<Vehicle> allVehicles, double pix){
         this.allVehicles = allVehicles;
         this.pix         = pix;
         this.setBackground(Color.decode("#466D1D"));
         setSize(5000,5000);
+        //img1 = Toolkit.getDefaultToolkit().getImage("dog.gif");
+        imgIcon = new ImageIcon("C:\\Users\\Lucas Toulon\\Documents\\Projekte\\HFT Stuttgart\\MSc\\Intelligente Systeme\\Simulation\\src\\doge3.png");
+        Image image = imgIcon.getImage(); // transform it
+        Image newimg = image.getScaledInstance(36, 36,  java.awt.Image.SCALE_SMOOTH); // scale it the smooth way
+        imgIcon = new ImageIcon(newimg);  // transform it back
     }
 
 
@@ -53,32 +61,30 @@ public class Canvas extends JPanel {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        g2d.drawOval((int) Math.abs(Simulation.GOAL[0]), (int) Math.abs(Simulation.GOAL[1]), 1, 1);
         for(int i=0;i<allVehicles.size();i++){
             Vehicle fz = allVehicles.get(i);
             Polygon q = kfzInPolygon(fz);
 
-
-            if(fz.type==1)g2d.setColor(Color.DARK_GRAY);
-            else 		  g2d.setColor(Color.lightGray);
-
-            //g2d.draw(q);
-            g2d.fillPolygon(q);
+            //Der Hund kriegt ein Bild verpasst
+            if(fz.type==1){
+               if(imgIcon != null){
+                   imgIcon.paintIcon(this, g, (int)(fz.pos[0]/pix)-18, (int)(fz.pos[1]/pix)-18); //zentriert
+               }else{
+                   //Bei Bildproblemen lieber das Rechteck nehmen
+                   g2d.setColor(Color.DARK_GRAY);
+                   g2d.fillPolygon(q);
+               }
+            }else{
+                g2d.setColor(Color.lightGray);
+                g2d.fillPolygon(q);
+            }
 
             int    x  = (int)(fz.pos[0]/pix);
             int    y  = (int)(fz.pos[1]/pix);
-//       		g2d.drawString(String.valueOf(fz.id), x, y);
 
-
-//        	double a1 = fz.pos[0]/pix;
-//        	double b1 = fz.pos[1]/pix;
-//        	double a2 = fz.tmpPkt[0]/pix;
-//        	double b2 = fz.tmpPkt[1]/pix;
-//        	Line2D.Double line4 = new Line2D.Double(a1, b1, a2, b2);
-//        	g2d.draw(line4);
-
-
+            //Falls Bild nicht vorhanden, dann zwei Kreise für die verschiedenen Radien
             if(fz.type==1){
+                //
                 int seite = (int)(fz.rad_sepSchafzuSchaeferhund/pix);
                 g2d.drawOval(x-seite, y-seite, 2*seite, 2*seite);
                 seite = (int)(fz.rad_ErkennungSchaeferhundzuSchaf /pix);
@@ -86,7 +92,7 @@ public class Canvas extends JPanel {
             }
         }
 
-        //Jetzt noch den Zaun
+        //Jetzt noch der Zaun
         g2d.drawLine(500, 0, 500, 350);
         g2d.drawLine(500, 450, 500, 800);
     }

@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 
 
 public	class Vehicle{
@@ -8,8 +7,8 @@ public	class Vehicle{
     double rad_sep;			//Radius f�r Zusammenbleiben
     double rad_zus;			//Radius f�r Separieren
     double rad_fol;			//Radius f�r Folgen
-    double rad_sepSchafzuSchaeferhund; //Radius für Erkennung Schäferhund
-    double rad_ErkennungSchaeferhundzuSchaf; //Radius für Erkennung Schäferhund
+    double rad_sepSchafzuSchaeferhund; //Radius für Erkennung als Schaf
+    double rad_ErkennungSchaeferhundzuSchaf; //Radius für Erkennung als Schäferhund
     int type;				//Fahrzeug-Type (0: Verfolger; 1: Anf�hrer)
     final double FZL;		//L�nge
     final double FZB;		//Breite
@@ -24,10 +23,10 @@ public	class Vehicle{
     //Steuerungsparameter 	(wird in der Methode steuerparameter_festlegen() berechnet)
     double[] acc_dest;		//Zielbeschleunigung
     final double max_acc;	//Maximale Beschleunigung
-    final double max_accSchaeferhund;
+    final double max_accSchaeferhund; //Schäferhund darf anders gesteuert werden
     final double max_vel;	//Maximale Geschwindigkeit
-    final double max_velSchaeferhund;
-    final double max_cor;
+    final double max_velSchaeferhund; //Schäferhund darf anders gesteuert werden
+    final double max_cor; //Korrekturfaktor für die Richtung des Tores
 
     //Zuk�nftige Bewegung 	(wird in der Methode steuern() berechnet)
     double[] pos_new;		//Neue Position
@@ -53,7 +52,6 @@ public	class Vehicle{
         this.max_velSchaeferhund      = 0.2;
         this.max_cor        = 0.01;
 
-
         pos		 			= new double[2];
         vel    	 			= new double[2];
         acc		 			= new double[2];
@@ -78,8 +76,6 @@ public	class Vehicle{
         acc_new[1]          = acc[1];
     }
 
-
-
     //cohesion
     double[] zusammenbleiben(ArrayList<Vehicle> all){
         ArrayList<Vehicle>  neighbours = new ArrayList<Vehicle>();
@@ -97,7 +93,6 @@ public	class Vehicle{
                 }
             }
         }
-
         if(neighbours.size() > 0){
             //1. pos_dest
             pos_dest[0]     = 0;
@@ -174,10 +169,12 @@ public	class Vehicle{
 
             //3. Korrektur der Zielgeschwindigkeit mit Richtung "zum Tor"
             double [] correction = new double[2];
+            //"irgendwo beim Tor" damit nicht alle zu einem fixen Punkt laufen
             int randomY = 355 + (int)(Math.random() * ((445 - 355) + 1));
             correction[0] = Simulation.GOAL[0]*Simulation.pix - pos[0] + 20;
             correction[1] = randomY*Simulation.pix - pos[1];
 
+            //Das soll nur "in die Richtung" gehen
             correction[0]  = correction[0]*max_cor;
             correction[1]  = correction[1]*max_cor;
 
@@ -187,11 +184,7 @@ public	class Vehicle{
             //4. Zielbeschleunigung
             acc_dest[0]  = vel_dest[0]-vel[0];
             acc_dest[1]  = vel_dest[1]-vel[1];
-
-
-
         }
-
         return acc_dest;
     }
 
@@ -231,11 +224,7 @@ public	class Vehicle{
                 vel_dest[0]  = vel_dest[0] + tmp[0];
                 vel_dest[1]  = vel_dest[1] + tmp[1];
 
-
-
             }
-//			vel_dest[0] = vel_dest[0] / myneighbours.size();
-//			vel_dest[1] = vel_dest[1] / myneighbours.size();
 
             //2. Zielgeschwindigkeit
             vel_dest     = normalize(vel_dest);
@@ -276,8 +265,6 @@ public	class Vehicle{
                 vel_dest[0]   = vel_dest[0] + v.vel[0];
                 vel_dest[1]   = vel_dest[1] + v.vel[1];
             }
-//			vel_dest[0] = vel_dest[0] / neighbours.size();
-//			vel_dest[1] = vel_dest[1] / neighbours.size();
 
             //2. Zielgeschwindigkeit
             vel_dest    = normalize(vel_dest);
@@ -287,23 +274,22 @@ public	class Vehicle{
             //3. Zielbeschleunigung
             acc_dest[0] = vel_dest[0]-vel[0];
             acc_dest[1] = vel_dest[1]-vel[1];
-
         }
 
         return acc_dest;
     }
 
     double[] driveAndCollect(ArrayList<Vehicle> all){
-        //In der Umgebung schauen, welchen Abstand die Schafe untereinander haben
+        //In der Umgebung schauen, welche Schafe da sind
         ArrayList<Vehicle> schaeferHundNeighbourHood = new ArrayList<Vehicle>();
         double[] pos_dest   = new double[2];
-        double[] vel_dest   = new double[2];
         double[] acc_dest   = new double[2];
         acc_dest[0]         = 0;
         acc_dest[1]         = 0;
         pos_dest[0]     = 0;
         pos_dest[1]     = 0;
         boolean search = true;
+        //Wir wollen immer mind. 1 Schaf in der Umgebung
         while(search){
             for(int i=0;i<all.size();i++){
                 Vehicle v = all.get(i);
@@ -317,6 +303,7 @@ public	class Vehicle{
                     }
                 }
             }
+            //solange kein Schaf in der Umgebung ist, den Radius vergrößern und nochmal probieren, ansonsten für das nächste Mal wieder resetten
             if(schaeferHundNeighbourHood.size() == 0){
                 //Radius vergrößern
                 rad_ErkennungSchaeferhundzuSchaf = rad_ErkennungSchaeferhundzuSchaf + INCREMENTrad_ErkennungSchaeferhundzuSchaf;
@@ -328,23 +315,26 @@ public	class Vehicle{
         }
         //faktisch wird es immer größer als 0 sein aber sicher ist sicher
         if(schaeferHundNeighbourHood.size() > 0){
-            //1. den Schnitt ermitteln.
+            //1. den Mittelpunkt ermitteln.
             pos_dest[0] = pos_dest[0] / schaeferHundNeighbourHood.size();
             pos_dest[1] = pos_dest[1] / schaeferHundNeighbourHood.size();
 
-            //pos_dest = M
+            //pos_dest = Mitte der Schafe
             //GOAL
             //gm = pos_dest - GOAL
-            double[] gm = new double[2];
-            gm[0]=pos_dest[0]-Simulation.GOAL[0]*Simulation.pix;
-            gm[1]=pos_dest[1]-Simulation.GOAL[1]*Simulation.pix;
+            double[] vectorGoalMitte = new double[2];
+            vectorGoalMitte[0]=pos_dest[0]-Simulation.GOAL[0]*Simulation.pix;
+            vectorGoalMitte[1]=pos_dest[1]-Simulation.GOAL[1]*Simulation.pix;
             double [] destination = new double[2];
-            destination[0] = Simulation.GOAL[0]*Simulation.pix + Simulation.OVERSHOT*gm[0];
-            destination[1] = Simulation.GOAL[1]*Simulation.pix + Simulation.OVERSHOT*gm[1];
+            destination[0] = Simulation.GOAL[0]*Simulation.pix + Simulation.OVERSHOT*vectorGoalMitte[0];
+            destination[1] = Simulation.GOAL[1]*Simulation.pix + Simulation.OVERSHOT*vectorGoalMitte[1];
+            //Sichergehen, dass wir im Rahmen bleiben
             if(destination[0]<0) destination[0]=0;
             if(destination[0]>499*Simulation.pix) destination[0]=499*Simulation.pix;
             if(destination[1]<0) destination[0]=0;
             if(destination[1]>600*Simulation.pix) destination[0]=600*Simulation.pix;
+
+            //Beschleunigung setzen
             acc_dest[0]  = destination[0]-pos[0];
             acc_dest[1]  = destination[1]-pos[1];
 
@@ -371,16 +361,16 @@ public	class Vehicle{
         double f4  = 0.9; //0.9
 
         if(type == 1){
-
+            //Der Schäferhund kriegt eine ganz andere Beschleunigung
             this.acc_dest = driveAndCollect(allVehicles);
         } else{
             //acc_dest1   = zusammenbleiben(allVehicles);
             //acc_dest1   = folgen(allVehicles);
+            //Die Schafe sollen nicht unbedingt zusammenbleiben
             acc_dest2   = separieren(allVehicles);
             acc_dest3   = ausrichten(allVehicles);
             acc_dest4   = separierenvomSchaeferhund(allVehicles);
 
-            //this.acc_dest[0] = ((f2 * acc_dest2[0]) + (f4 * acc_dest4[0]));
             this.acc_dest[0] = (/*(f1 * acc_dest1[0])+*/ (f2 * acc_dest2[0]) + (f3 * acc_dest3[0]) + (f4 * acc_dest4[0]));
             this.acc_dest[1] = (/*(f1 * acc_dest1[1])+*/ (f2 * acc_dest2[1]) + (f3 * acc_dest3[1]) + (f4 * acc_dest4[1]));
 
@@ -403,7 +393,6 @@ public	class Vehicle{
         }else{
             vel_new  = truncate(vel_new, max_vel);
         }
-
 
         //3. Neue Position berechnen
         pos_new[0] = pos[0] + vel_new[0];

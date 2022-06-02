@@ -14,7 +14,9 @@ public class Simulation extends JFrame implements Runnable{
     ArrayList<Vehicle> allVehicles = new ArrayList<Vehicle>();
     JPanel                  canvas = new Canvas(allVehicles, pix);
     Thread t1;
+    //Das Tor
     final static double[] GOAL = new double[]{500.0, 400.0};
+    //Der Überschussfaktor für die letztendliche Zielposition
     final static double OVERSHOT = 1.3;
 
     Simulation(){
