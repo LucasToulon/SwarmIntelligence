@@ -13,6 +13,8 @@ public	class Vehicle{
     int type;				//Fahrzeug-Type (0: Verfolger; 1: Anf�hrer)
     final double FZL;		//L�nge
     final double FZB;		//Breite
+    final double RESETrad_ErkennungSchaeferhundzuSchaf;
+    final double INCREMENTrad_ErkennungSchaeferhundzuSchaf;
 
     //Aktuelle Bewegung 	(wird in der Methode bewegen() berechnet)
     double[] pos;			//Position
@@ -25,6 +27,7 @@ public	class Vehicle{
     final double max_accSchaeferhund;
     final double max_vel;	//Maximale Geschwindigkeit
     final double max_velSchaeferhund;
+    final double max_cor;
 
     //Zuk�nftige Bewegung 	(wird in der Methode steuern() berechnet)
     double[] pos_new;		//Neue Position
@@ -41,11 +44,15 @@ public	class Vehicle{
         this.rad_fol        = 200;
         this.rad_sepSchafzuSchaeferhund = 40;
         this.rad_ErkennungSchaeferhundzuSchaf = 25;
+        this.RESETrad_ErkennungSchaeferhundzuSchaf = 25;
+        this.INCREMENTrad_ErkennungSchaeferhundzuSchaf = 5;
         this.type           = 0;
-        this.max_acc        = 1;//0.1
+        this.max_acc        = 0.5;//0.1
         this.max_accSchaeferhund= 0.3;
-        this.max_vel        = 0.05;
+        this.max_vel        = 0.08;
         this.max_velSchaeferhund      = 0.2;
+        this.max_cor        = 0.001;
+
 
         pos		 			= new double[2];
         vel    	 			= new double[2];
@@ -127,7 +134,10 @@ public	class Vehicle{
         double[] acc_dest = new double[2];
         acc_dest[0]       = 0;
         acc_dest[1]       = 0;
-
+        //Wenn schon drüber, keine Korrektur mehr
+        if((pos[0] >= 510*Simulation.pix)){
+            return acc_dest;
+        }
         for(int i=0;i<all.size();i++){
             Vehicle v = all.get(i);
             if(v.type==1){//nur Separation vom Anführer
@@ -138,12 +148,11 @@ public	class Vehicle{
             }
         }
         if(myneighbours.size() > 0){
-
             //1. Zielrichtung
             vel_dest[0] = 0;
             vel_dest[1] = 0;
             for(int i=0;i<myneighbours.size();i++){
-                Vehicle v    = myneighbours.get(i);
+                Vehicle v = myneighbours.get(i);
                 double[] tmp = new double[2];
                 double dist;
 
@@ -157,24 +166,32 @@ public	class Vehicle{
                 tmp[1]       = -tmp[1] * dist;
                 vel_dest[0]  = vel_dest[0] + tmp[0];
                 vel_dest[1]  = vel_dest[1] + tmp[1];
-
-
-
             }
-//			vel_dest[0] = vel_dest[0] / myneighbours.size();
-//			vel_dest[1] = vel_dest[1] / myneighbours.size();
-
             //2. Zielgeschwindigkeit
             vel_dest     = normalize(vel_dest);
             vel_dest[0]  = vel_dest[0]*max_vel;
             vel_dest[1]  = vel_dest[1]*max_vel;
 
-            //3. Zielbeschleunigung
+            //3. Korrektur der Zielgeschwindigkeit mit Richtung "zum Tor"
+            double [] correction = new double[2];
+            int randomY = 350 + (int)(Math.random() * ((450 - 350) + 1));
+            correction[0] = Simulation.GOAL[0]*Simulation.pix - pos[0] + 20;
+            correction[1] = randomY*Simulation.pix - pos[1];
+
+            //correction[0]  = correction[0]*0;
+            //correction[1]  = correction[1]*0;
+            correction[0]  = correction[0]*max_acc;
+            correction[1]  = correction[1]*max_acc;
+
+            vel_dest[0]  = vel_dest[0]+correction[0];
+            vel_dest[1]  = vel_dest[1]+correction[1];
+
+            //4. Zielbeschleunigung
             acc_dest[0]  = vel_dest[0]-vel[0];
             acc_dest[1]  = vel_dest[1]-vel[1];
-            acc_dest[1]  = vel_dest[1]-vel[1];
-            //acc_dest[0]  = -acc_dest[0];
-            //acc_dest[1]  = -acc_dest[1];
+
+
+
         }
 
         return acc_dest;
@@ -288,17 +305,30 @@ public	class Vehicle{
         acc_dest[1]         = 0;
         pos_dest[0]     = 0;
         pos_dest[1]     = 0;
-        for(int i=0;i<all.size();i++){
-            Vehicle v = all.get(i);
-            if(v.id != this.id && v.type!=1){
-                double dist = Math.sqrt(Math.pow(v.pos[0]-this.pos[0],2) + Math.pow(v.pos[1]-this.pos[1],2));
-                if(dist < rad_ErkennungSchaeferhundzuSchaf){
-                    schaeferHundNeighbourHood.add(v);
-                    pos_dest[0] = pos_dest[0] + v.pos[0];
-                    pos_dest[1] = pos_dest[1] + v.pos[1];
+        boolean search = true;
+        while(search){
+            for(int i=0;i<all.size();i++){
+                Vehicle v = all.get(i);
+                //Nur die, die noch links vom Zaun sind
+                if(v.id != this.id && v.type!=1 && v.pos[0] < 500*Simulation.pix){
+                    double dist = Math.sqrt(Math.pow(v.pos[0]-this.pos[0],2) + Math.pow(v.pos[1]-this.pos[1],2));
+                    if(dist < rad_ErkennungSchaeferhundzuSchaf){
+                        schaeferHundNeighbourHood.add(v);
+                        pos_dest[0] = pos_dest[0] + v.pos[0];
+                        pos_dest[1] = pos_dest[1] + v.pos[1];
+                    }
                 }
             }
+            if(schaeferHundNeighbourHood.size() == 0){
+                //Radius vergrößern
+                rad_ErkennungSchaeferhundzuSchaf = rad_ErkennungSchaeferhundzuSchaf + INCREMENTrad_ErkennungSchaeferhundzuSchaf;
+            }else{
+                //Radius wieder resetten
+                search = false;
+                rad_ErkennungSchaeferhundzuSchaf = RESETrad_ErkennungSchaeferhundzuSchaf;
+            }
         }
+        //faktisch wird es immer größer als 0 sein aber sicher ist sicher
         if(schaeferHundNeighbourHood.size() > 0){
             //1. den Schnitt ermitteln.
             pos_dest[0] = pos_dest[0] / schaeferHundNeighbourHood.size();
@@ -308,11 +338,11 @@ public	class Vehicle{
             //GOAL
             //gm = pos_dest - GOAL
             double[] gm = new double[2];
-            gm[0]=pos_dest[0]-Simulation.GOAL[0];
-            gm[1]=pos_dest[1]-Simulation.GOAL[1];
+            gm[0]=pos_dest[0]-Simulation.GOAL[0]*Simulation.pix;
+            gm[1]=pos_dest[1]-Simulation.GOAL[1]*Simulation.pix;
             double [] destination = new double[2];
-            destination[0] = Simulation.GOAL[0] + Simulation.OVERSHOT*gm[0];
-            destination[1] = Simulation.GOAL[1] + Simulation.OVERSHOT*gm[1];
+            destination[0] = Simulation.GOAL[0]*Simulation.pix + Simulation.OVERSHOT*gm[0];
+            destination[1] = Simulation.GOAL[1]*Simulation.pix + Simulation.OVERSHOT*gm[1];
             if(destination[0]<0) destination[0]=0;
             if(destination[0]>499*Simulation.pix) destination[0]=499*Simulation.pix;
             if(destination[1]<0) destination[0]=0;
@@ -320,8 +350,6 @@ public	class Vehicle{
             acc_dest[0]  = destination[0]-pos[0];
             acc_dest[1]  = destination[1]-pos[1];
 
-        }else{
-            //Radius vergrößern
         }
 
         if(Math.random()<0.01){
@@ -340,9 +368,9 @@ public	class Vehicle{
         double[] acc_dest3 = new double[2];
         double[] acc_dest4 = new double[2];
         double f1  = 0.01; //0.05
-        double f2  = 0.05; //0.55
-        double f3  = 0.08; //0.4
-        double f4  = 10; //0.9
+        double f2  = 0.1; //0.55
+        double f3  = 0.01; //0.4
+        double f4  = 0.9; //0.9
 
         if(type == 1){
 
@@ -402,7 +430,12 @@ public	class Vehicle{
         }
 
         //5. Position ggf. korrigieren, falls Zaun erreicht wird
-        if(this.type == 0 && pos_new[0] > 495*Simulation.pix && pos_new[0] < 505*Simulation.pix && (pos_new[1] <350*Simulation.pix || pos_new[1]>450*Simulation.pix)){
+        if(this.type == 0 && (pos_new[0] >= 499*Simulation.pix) && (pos_new[0] <= 501*Simulation.pix) && (pos_new[1] <350*Simulation.pix || pos_new[1]>450*Simulation.pix)){
+            vel_new[0] = -(vel_new[0]);
+            pos_new[0] = pos[0] + vel_new[0];
+        }
+        //6. Schafe bleiben rechts
+        if(this.type == 0 && (pos_new[0] <= 501*Simulation.pix) && (pos[0] > 501*Simulation.pix)){
             vel_new[0] = -(vel_new[0]);
             pos_new[0] = pos[0] + vel_new[0];
         }
@@ -480,7 +513,7 @@ public	class Vehicle{
         if(betrag_v1==0 || betrag_v2==0){
             winkelGrad = 0;
             winkelRad  = 0;
-//			System.out.println("Betrag = 0");
+
         }
         else{
             skalPro    = (v1[0]*v2[0])+(v1[1]*v2[1]);
@@ -491,7 +524,6 @@ public	class Vehicle{
             winkelGrad = winkelRad*180/Math.PI;
         }
 
-        //System.out.println("Winkel " + winkelRad + " " + winkelGrad + " " + betrag_v1 + " " + betrag_v2);
 
         return winkelRad;
     }

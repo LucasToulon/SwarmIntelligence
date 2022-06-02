@@ -53,6 +53,7 @@ public class Canvas extends JPanel {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
+        g2d.drawOval((int) Math.abs(Simulation.GOAL[0]), (int) Math.abs(Simulation.GOAL[1]), 1, 1);
         for(int i=0;i<allVehicles.size();i++){
             Vehicle fz = allVehicles.get(i);
             Polygon q = kfzInPolygon(fz);
@@ -82,7 +83,6 @@ public class Canvas extends JPanel {
                 g2d.drawOval(x-seite, y-seite, 2*seite, 2*seite);
                 seite = (int)(fz.rad_ErkennungSchaeferhundzuSchaf /pix);
                 g2d.drawOval(x-seite, y-seite, 2*seite, 2*seite);
-                System.out.println(Arrays.toString(fz.pos));
             }
         }
 

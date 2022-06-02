@@ -32,7 +32,7 @@ public class Simulation extends JFrame implements Runnable{
 
         Vehicle v = allVehicles.get(0);
         v.pos[0]  = 10;
-        v.pos[1]  = 50;
+        v.pos[1]  = 100;
         v.vel[0]  = v.max_vel;
         v.vel[1]  = 0;
 //			v = allVehicles.get(1);
