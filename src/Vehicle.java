@@ -51,7 +51,7 @@ public	class Vehicle{
         this.max_accSchaeferhund= 0.3;
         this.max_vel        = 0.08;
         this.max_velSchaeferhund      = 0.2;
-        this.max_cor        = 0.001;
+        this.max_cor        = 0.01;
 
 
         pos		 			= new double[2];
@@ -174,14 +174,12 @@ public	class Vehicle{
 
             //3. Korrektur der Zielgeschwindigkeit mit Richtung "zum Tor"
             double [] correction = new double[2];
-            int randomY = 350 + (int)(Math.random() * ((450 - 350) + 1));
+            int randomY = 355 + (int)(Math.random() * ((445 - 355) + 1));
             correction[0] = Simulation.GOAL[0]*Simulation.pix - pos[0] + 20;
             correction[1] = randomY*Simulation.pix - pos[1];
 
-            //correction[0]  = correction[0]*0;
-            //correction[1]  = correction[1]*0;
-            correction[0]  = correction[0]*max_acc;
-            correction[1]  = correction[1]*max_acc;
+            correction[0]  = correction[0]*max_cor;
+            correction[1]  = correction[1]*max_cor;
 
             vel_dest[0]  = vel_dest[0]+correction[0];
             vel_dest[1]  = vel_dest[1]+correction[1];
